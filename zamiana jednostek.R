@@ -18,3 +18,13 @@ dane2$acceleration <- x
 dane2
 
 write.csv(dane2, file = "dane2.csv")
+
+ud.convert()
+
+library(units)
+
+a <- 10
+a <- set_units(10, m/s)
+b <- a
+units(b) <- with(ud_units, km/h)
+b
