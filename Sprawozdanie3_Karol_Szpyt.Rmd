@@ -1,0 +1,80 @@
+---
+title: "Sprawozdanie 3"
+author: "Karol Szpyt"
+date: "23 maja 2018"
+output: html_document
+---
+
+#Wstęp  
+Sprawozdanie ma za zadanie ukazać zależność spalania samochodów w zależności od innych czynników. W tym celu przedstawione zostaną statystyki opisowe oraz zbudowany zostanie model liniowy, na podstawie których wyciągane będą wnioski.  
+#Użyte bibioteki
+```{r message=FALSE, warning=FALSE}
+library(ggplot2)
+library(knitr)
+library(units)
+```  
+#Dane  
+Przy pomocy pakietu *units* jednostki zmiennych zamienione zostały na europejskie standardy
+```{r}
+dane <- read.csv("cars.csv")
+
+dane$mpg <- set_units(dane$mpg, mile/gallon)
+units(dane$mpg) <- with(ud_units, l/km)
+dane$mpg <- as.numeric(dane$mpg) * 100 
+dane$mpg <- format(round(dane$mpg, 2))
+
+dane$displacement <- set_units(dane$displacement, inch^3)
+units(dane$displacement) <- with(ud_units, l)
+
+dane$weight <- set_units(dane$weight, pound)
+units(dane$weight) <- with(ud_units, kg)
+
+dane$acceleration <- set_units(dane$acceleration, second)
+
+dane$mpg <- as.numeric(dane$mpg)
+colnames(dane)[1] <- "lp100km"
+```
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+write.csv(dane, file = "dane mpg.csv")
+dane <- read.csv("dane mpg.csv")
+kable(head(dane, 10), caption = "Pierwsze 10 pozycji danych")
+```  
+  
+Objaśnienie zmiennych  
+
+* lp100km- spalanie w litrach na 100km.
+* cylinders- liczba cylindrów.
+* displacement- objętość silnika litrach.
+* horsepower- moc w koniach mechanicznych.
+* weight- waga w kilogramach.
+* acceleration- czas przyspieszenia od 0 do 100 km/h, podany w sekundach.
+* year- rok produkcji.
+* origin- miejsce produkcji (1- USA, 2- Europa, 3- Japonia).
+* name- nazwa samochodu.
+
+
+```{r}
+hellwig <- function(y, x)
+{
+  n <- ncol(x)
+  l <- (2^n)-1
+  R0 <- cor(y, x)
+  R <- abs(as.matrix(cor(x)))
+  argument <- replicate(n, c(0, 1), simplify = FALSE)
+  comb <- as.matrix(expand.grid(argument))
+  comb <- comb[-1,]
+  h <- matrix(0, l, n)
+  for(i in 1:l) 
+  {
+    for(j in 1:n)
+    {
+      h[i,j] <- (comb[i, j] * (R0[j]^2))/ (comb[i,] %*% as.vector(R[,j]))
+    }
+  }
+  m=which.max(rowSums(h))
+  colnames(comb) <- colnames(x)
+  return((comb[m,]))
+}
+```
+

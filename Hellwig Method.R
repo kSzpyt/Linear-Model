@@ -5,9 +5,7 @@ hellwig <- function(y, x)
   
   R0 <- cor(y, x)
   R <- abs(as.matrix(cor(x)))
-  #R <- as.matrix(cor(x))
-  
-  
+
   argument <- replicate(n, c(0, 1), simplify = FALSE)
   comb <- as.matrix(expand.grid(argument))
   comb <- comb[-1,]
@@ -21,14 +19,12 @@ hellwig <- function(y, x)
       h[i,j] <- (comb[i, j] * (R0[j]^2))/ (comb[i,] %*% as.vector(R[,j]))
     }
   }
+
   
-  
-  #index <- which(rowSums(h) == max(rowSums(h)))
-  
-  maks=which.max(rowSums(h))
+  m=which.max(rowSums(h))
   colnames(comb) <- colnames(x)
   
-  return((comb[maks,]))
+  return((comb[m,]))
 }
 
 
