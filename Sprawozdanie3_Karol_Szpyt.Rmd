@@ -15,9 +15,11 @@ library(units)
 ```  
 #Dane  
 Przy pomocy pakietu *units* jednostki zmiennych zamienione zostały na europejskie standardy
-```{r}
+```{r include=FALSE}
 dane <- read.csv("cars.csv")
+```
 
+```{r}
 dane$mpg <- set_units(dane$mpg, mile/gallon)
 units(dane$mpg) <- with(ud_units, l/km)
 dane$mpg <- as.numeric(dane$mpg) * 100 
@@ -37,6 +39,7 @@ colnames(dane)[1] <- "lp100km"
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 write.csv(dane, file = "dane mpg.csv")
+dane <- dane[, -1]
 dane <- read.csv("dane mpg.csv")
 kable(head(dane, 10), caption = "Pierwsze 10 pozycji danych")
 ```  
@@ -51,9 +54,26 @@ Objaśnienie zmiennych
 * acceleration- czas przyspieszenia od 0 do 100 km/h, podany w sekundach.
 * year- rok produkcji.
 * origin- miejsce produkcji (1- USA, 2- Europa, 3- Japonia).
-* name- nazwa samochodu.
+* name- nazwa samochodu.  
+  
+Na samym początku usunięte zostaną z danych zmienne jakościowe tj. **origin** oraz **name**, nie będą one brane pod uwagę w dalszej części projektu.  
+  
+Poniżej obliczony zostanie współczynnik zmienności.  
+Współczynnik obliczany jest ze wzoru: $\frac{sd}{mean}$  
 
 
+```{r echo=FALSE}
+dane2 <- dane[,c(-1, -9, -10)]
+s <- sapply(dane2, sd)
+m <- sapply(dane2, mean)
+
+kable(s/m, caption = "Współczynnik zmienności dla poszczególnych zmiennych")
+```
+Jak widać w powyższej tabeli zmienna **year** ma bardzo niską wartość liczonego współczynnika więc w kolejnych obliczeniach będzie ona pomijana
+```{r include=FALSE}
+dane2 <- dane[,c(-1, -8, -9, -10)]
+```  
+Funkcja wykonująca metodę Hellwiga
 ```{r}
 hellwig <- function(y, x)
 {
@@ -76,5 +96,13 @@ hellwig <- function(y, x)
   colnames(comb) <- colnames(x)
   return((comb[m,]))
 }
+```  
+Wynik powyżeszj funkcji wskaże zmiennen które będą najlepsze do wykorzystania w modelu liniowym.
+```{r echo=FALSE}
+x <- as.matrix(hellwig(dane2[, 1], dane2[, -1]))
+colnames(x) <- "value"
+kable(x, caption = "Output dla metody Hellwiga")
 ```
+
+
 
