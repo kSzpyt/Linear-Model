@@ -68,7 +68,8 @@ s <- sapply(dane2, sd)
 m <- sapply(dane2, mean)
 
 kable(s/m, caption = "Współczynnik zmienności dla poszczególnych zmiennych")
-```
+```  
+  
 Jak widać w powyższej tabeli zmienna **year** ma bardzo niską wartość liczonego współczynnika więc w kolejnych obliczeniach będzie ona pomijana
 ```{r include=FALSE}
 dane2 <- dane[,c(-1, -8, -9, -10)]
@@ -102,7 +103,25 @@ Wynik powyżeszj funkcji wskaże zmiennen które będą najlepsze do wykorzystan
 x <- as.matrix(hellwig(dane2[, 1], dane2[, -1]))
 colnames(x) <- "value"
 kable(x, caption = "Output dla metody Hellwiga")
+``` 
+  
+Jak widać metoda Hellwiga wskazała, że najlepsze będą zmienne **horsepower** oraz **weight**.  
+To właśnie te zmienne zastosowane zostaną w modelu jako zmienne objaśniająće.
+#Model liniowy
+```{r}
+model <- lm(lp100km ~ horsepower + weight, dane)
+```  
+Badanie normalności reszt za pomocą testu Jarque Bera
+```{r}
+res <- model$residuals
+jarque.bera.test(res)
+```  
+Test Jarque Bera wskazał bardzo niską wartośc p-value co oznacza, że reszty nie mają rozkładu normalnego.
+
+```{r echo=FALSE}
+summary(model) 
 ```
+
 
 
 
