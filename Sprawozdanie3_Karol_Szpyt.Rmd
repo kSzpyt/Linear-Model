@@ -12,14 +12,19 @@ Sprawozdanie ma za zadanie ukazać zależność spalania samochodów w zależno�
 library(ggplot2)
 library(knitr)
 library(units)
+library(tseries)
+library(lmtest)
+library(tidyr)
+library(dplyr)
 ```  
-#Dane  
+##Dane  
 Przy pomocy pakietu *units* jednostki zmiennych zamienione zostały na europejskie standardy
 ```{r include=FALSE}
 dane <- read.csv("cars.csv")
 ```
 
 ```{r}
+N <- 10^3
 dane$mpg <- set_units(dane$mpg, mile/gallon)
 units(dane$mpg) <- with(ud_units, l/km)
 dane$mpg <- as.numeric(dane$mpg) * 100 
@@ -66,15 +71,18 @@ Współczynnik obliczany jest ze wzoru: $\frac{sd}{mean}$
 dane2 <- dane[,c(-1, -9, -10)]
 s <- sapply(dane2, sd)
 m <- sapply(dane2, mean)
+p <- as.matrix(s/m)
+colnames(p) <- "value"
 
-kable(s/m, caption = "Współczynnik zmienności dla poszczególnych zmiennych")
+kable(p, caption = "Współczynnik zmienności dla poszczególnych zmiennych")
 ```  
   
-Jak widać w powyższej tabeli zmienna **year** ma bardzo niską wartość liczonego współczynnika więc w kolejnych obliczeniach będzie ona pomijana
+Jak widać w powyższej tabeli zmienna **year** ma bardzo niską wartość liczonego współczynnika (mniej niż 10%) więc w kolejnych obliczeniach będzie ona pomijana
 ```{r include=FALSE}
 dane2 <- dane[,c(-1, -8, -9, -10)]
 ```  
-Funkcja wykonująca metodę Hellwiga
+##Dobieranie zmiennych metodą Hellwiga  
+Funkcja odpowiedzialna za metodę Hellwiga
 ```{r}
 hellwig <- function(y, x)
 {
@@ -98,7 +106,7 @@ hellwig <- function(y, x)
   return((comb[m,]))
 }
 ```  
-Wynik powyżeszj funkcji wskaże zmiennen które będą najlepsze do wykorzystania w modelu liniowym.
+Wynik powyżeszj funkcji wskaże zmienne które będą najlepsze do wykorzystania w modelu liniowym.
 ```{r echo=FALSE}
 x <- as.matrix(hellwig(dane2[, 1], dane2[, -1]))
 colnames(x) <- "value"
@@ -106,22 +114,219 @@ kable(x, caption = "Output dla metody Hellwiga")
 ``` 
   
 Jak widać metoda Hellwiga wskazała, że najlepsze będą zmienne **horsepower** oraz **weight**.  
-To właśnie te zmienne zastosowane zostaną w modelu jako zmienne objaśniająće.
+To właśnie te zmienne zastosowane zostaną w modelu jako zmienne objaśniająće. 
+
+##Dobieranie zmiennych metodą bootstrapową   
+Funkcje odpowiedzialną za dobieranie zmiennych metodą bootstrapową
+```{r}
+boot_coef <- function(dane)
+{
+    boot_sample <- sample(1:nrow(dane), 
+                          nrow(dane), 
+                          replace = T)
+    model <- lm(lp100km ~ ., data = dane[boot_sample, ])
+    return(coef(model))
+}
+bootstrap <- function(dane, alpha = 0.05, n = N)
+{
+  coefs <- sapply(rep(1, n), function(x) boot_coef(dane))
+  conf_inter <- apply(coefs, 1, function(x) quantile(x, c(alpha/2, 1-alpha/2)) )
+  
+  pvec<- data.frame("const" = NA, "cylinders" = NA, "displacement" = NA, "horsepower" = NA, "weight" = NA, "accelaration" = NA)
+  
+  coefs <- t(coefs)
+  for(i in 1:ncol(conf_inter))
+  {
+    if(mean(conf_inter[1,i], conf_inter[2,i]) > 0)
+    {
+      pvec[, i] <- length(coefs[coefs[, i] <0 , i]) / n
+    }
+    else
+    {
+      pvec[, i] <- length(coefs[coefs[, i] > 0, i]) / n
+    }
+  }
+  index <- 0
+  index <- which(pvec[, -1] > alpha)
+  if(length(index) != 0)
+  {
+      dane <- dane[, -(index + 1)]
+      bootstrap(dane)
+  }
+  else
+  {
+    return(dane)
+  }
+}
+```  
+Outputem dla metody bootsrapowej jest gotowa ramka danych, gdzie pierwsza zmienna jes zmienną objaśnianą, a reszta zmiennych to zmienne objaśniające. 
+```{r echo=FALSE}
+dane3 <- bootstrap(dane2, alpha = 0.05, n = N)
+kable(head(dane3))
+```  
+  
+Jak widać metoda ta również wskazała, że najlepsze do wykorzystania w modelu będą zmienne **horsepower** oraz **weight**.  
+  
+#Wizualizacja zależności między wybranymi zmiennymi
+```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
+dane %>%
+  ggplot(aes(x = horsepower, y = lp100km)) +
+  geom_jitter() + 
+  geom_smooth(se = T) +
+  geom_smooth(method = "lm", col = "red", se = F) +
+  ggtitle("Zależność między spalaniem, a mocą")
+
+dane %>%
+  ggplot(aes(x = weight, y = lp100km)) +
+  geom_jitter() + 
+  geom_smooth(se = T) +
+  geom_smooth(method = "lm", col = "red", se = F) +
+  ggtitle("Zależność między wagą, a mocą")
+
+dane %>%
+  ggplot(aes(x = horsepower, y = weight)) +
+  geom_jitter() + 
+  geom_smooth(se = T) +
+  #geom_smooth(method = "lm", col = "red", se = F) +
+  ggtitle("Zależność między mocą, a wagą")
+```
+  
+Trzeba zauważyć, że pomiędzy zmiennymi objaśniającymi występuje silna korelacja
+```{r}
+cor(dane$horsepower, dane$weight)
+```
+
+
 #Model liniowy
 ```{r}
 model <- lm(lp100km ~ horsepower + weight, dane)
 ```  
-Badanie normalności reszt za pomocą testu Jarque Bera
-```{r}
-res <- model$residuals
-jarque.bera.test(res)
-```  
-Test Jarque Bera wskazał bardzo niską wartośc p-value co oznacza, że reszty nie mają rozkładu normalnego.
 
 ```{r echo=FALSE}
-summary(model) 
+model
 ```
 
+###Badanie normalności reszt za pomocą testu Jarque Bera
+```{r}
+jarque.bera.test(model$residuals)
+```  
+Test Jarque Bera wskazał bardzo niską wartośc p-value co oznacza, że reszty **nie** mają rozkładu normalnego.  
+  
+###Badanie współczynnika determinacji
+```{r echo=FALSE}
+summary(model)$adj.r.squared
+```  
+Współczynnik determinacji wynosi ponad **80%** co jest bardzo dobrym wynikiem. Współczynnik ten informuje o tym, jaka część zmienności zmiennej objaśnianej została wyjaśniona przez model. Jest on więc miarą stopnia, w jakim model wyjaśnia kształtowanie się zmiennej objaśnianej.  
+
+###Badanie heteroskedastyczności  
+Test Breuscha-Pagana
+```{r}
+bptest(model)
+```  
+P-value jest mniejsze od domyślnego 5% co oznacza, że odrzucana jest hipoteza zerowa - w modelu **występuje** heteroskedastyczność.  
+
+###Badanie poprawności specyfikacji dla modeli regresji liniowej  
+Test RESET Ramseya. Test stosowany jest w celu sprawdzenia, czy to liniowa postać modelu jest najlepszym możliwym do wybrania modelem.
+```{r}
+resettest(model, power=2, type="regressor")
+```  
+P-value jest większe od domyślnego 5% co oznacza, że nie ma przesłanek do odrzucenia H0 - postać modelu **jest dobra**.
+
+###Przedziały ufności metodą klasyczną
+```{r include=FALSE}
+s <- summary(model)
+s <- s$coefficients
+x1 <- c(s[2, 1] + qnorm(c(.05, .95)) * s[2, 2],
+        s[2, 1] + qnorm(c(.025, .975)) * s[2, 2],
+        s[2, 1] + qnorm(c(.005, .995)) * s[2, 2])
+
+m1 <- matrix(x1, 3, 2)
+rownames(m1) <- c("90%", "95%", "99%")
+colnames(m1) <- c("lewy koniec przedziału", "prawy koniec przedziału")
 
 
+x2 <- c(s[3, 1] + qnorm(c(.05, .95)) * s[3, 2],
+        s[3, 1] + qnorm(c(.025, .975)) * s[3, 2],
+        s[3, 1] + qnorm(c(.005, .995)) * s[3, 2])
+
+m2 <- matrix(x2, 3, 2)
+rownames(m2) <- c("90%", "95%", "99%")
+colnames(m2) <- c("lewy koniec przedziału", "prawy koniec przedziału")
+
+```
+```{r echo=FALSE}
+kable(m1, caption = "Przedziały ufności dla współczynnika zmiennej horsepower")
+```  
+  
+```{r echo=FALSE}
+kable(m2, caption = "Przedziały ufności dla współczynnika zmiennej weight")
+```  
+
+###Przedziały ufności metodą bootstrapową  
+
+```{r include=FALSE}
+par_horsepower <- rep(NA, 10 ^ 2)
+par_weight <- rep(NA, 10 ^ 2)
+
+for(i in 1:N)
+{
+  boot_sample <- sample(1:nrow(dane), 
+                        nrow(dane), 
+                        replace = T)
+  model <- lm(lp100km ~ horsepower + weight, 
+              data = dane[boot_sample, c(2, 5, 6)])
+  par_horsepower[i] <- coef(model)[2]
+  par_weight[i] <- coef(model)[3]
+  coef(model)
+}
+
+a1 <- c(quantile(par_horsepower, c(0.05, 0.95)),
+        quantile(par_horsepower, c(0.025, 0.975)),
+        quantile(par_horsepower, c(0.005, 0.995)))
+
+m3 <- matrix(a1, 3, 2)
+rownames(m3) <- c("90%", "95%", "99%")
+colnames(m3) <- c("lewy koniec przedziału", "prawy koniec przedziału")
+###############################
+a2 <- c(quantile(par_weight, c(0.05, 0.95)),
+        quantile(par_weight, c(0.025, 0.975)),
+        quantile(par_weight, c(0.005, 0.995)))
+
+m4 <- matrix(a2, 3, 2)
+rownames(m4) <- c("90%", "95%", "99%")
+colnames(m4) <- c("lewy koniec przedziału", "prawy koniec przedziału")
+```
+
+```{r echo=FALSE}
+kable(m3, caption = "Przedziały ufności dla współczynnika zmiennej horsepower")
+```  
+  
+```{r echo=FALSE}
+kable(m4, caption = "Przedziały ufności dla współczynnika zmiennej weight")
+```
+
+```{r include=FALSE}
+hp <- tibble(bootstrap = par_horsepower,
+                          classic = 
+                            s[2,1] + 
+                            rnorm(N) * 
+                            s[2,2]) %>%
+  gather(metoda, parameter)
+
+we <- tibble(bootstrap = par_weight,
+              classic = 
+                s[3,1] + 
+                rnorm(N) * 
+                s[3,2]) %>%
+  gather(metoda, parameter)
+```
+```{r fig.align='center'}
+hp %>%
+  ggplot(aes(x = parameter, col = metoda)) + 
+  geom_density()
+
+we %>%
+  ggplot(aes(x = parameter, col = metoda)) + 
+  geom_density()
+```
 
