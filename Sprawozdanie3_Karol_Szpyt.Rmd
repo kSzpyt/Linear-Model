@@ -24,7 +24,7 @@ dane <- read.csv("cars.csv")
 ```
 
 ```{r}
-N <- 10^3
+N <- 10^5
 dane$mpg <- set_units(dane$mpg, mile/gallon)
 units(dane$mpg) <- with(ud_units, l/km)
 dane$mpg <- as.numeric(dane$mpg) * 100 
@@ -162,10 +162,13 @@ bootstrap <- function(dane, alpha = 0.05, n = N)
 Outputem dla metody bootsrapowej jest gotowa ramka danych, gdzie pierwsza zmienna jes zmienną objaśnianą, a reszta zmiennych to zmienne objaśniające. 
 ```{r echo=FALSE}
 dane3 <- bootstrap(dane2, alpha = 0.05, n = N)
-kable(head(dane3))
+kable(head(dane3), caption = "Pierwsze 6 obserwacji gotowej tabeli")
 ```  
   
-Jak widać metoda ta również wskazała, że najlepsze do wykorzystania w modelu będą zmienne **horsepower** oraz **weight**.  
+Jak widać metoda ta również wskazała, że najlepsze do wykorzystania w modelu będą zmienne **horsepower** oraz **weight**. 
+  
+##Hipotezy  
+Spodziewać się można, że wzrost zarówno **mocy** auta jak i jego **wagi** zwiększać będzie **spalanie**.
   
 #Wizualizacja zależności między wybranymi zmiennymi
 ```{r echo=FALSE, message=FALSE, warning=FALSE, fig.align='center'}
@@ -230,9 +233,17 @@ Test RESET Ramseya. Test stosowany jest w celu sprawdzenia, czy to liniowa posta
 ```{r}
 resettest(model, power=2, type="regressor")
 ```  
-P-value jest większe od domyślnego 5% co oznacza, że nie ma przesłanek do odrzucenia H0 - postać modelu **jest dobra**.
+P-value jest większe od domyślnego 5% co oznacza, że nie ma przesłanek do odrzucenia H0 - postać modelu **jest dobra**.  
+  
+##Postać modelu  
+```{r}
+model$coefficients
+```  
+$$Y = -0.5551 + 0.0319X1 + 0.0062X2$$
+  
+Hipoteza potwierdziła się, zwiększająca się liczba koni mechanicznych zwiększa spalanie w przybliżeniu o 0.03 $\frac{l}{100km}$, a wzrost wagi (kg) implikuje wzrost spalanie o około 0.006 $\frac{l}{100km}$
 
-###Przedziały ufności metodą klasyczną
+###Przedziały ufności dla współczynników metodą klasyczną
 ```{r include=FALSE}
 s <- summary(model)
 s <- s$coefficients
@@ -240,7 +251,7 @@ x1 <- c(s[2, 1] + qnorm(c(.05, .95)) * s[2, 2],
         s[2, 1] + qnorm(c(.025, .975)) * s[2, 2],
         s[2, 1] + qnorm(c(.005, .995)) * s[2, 2])
 
-m1 <- matrix(x1, 3, 2)
+m1 <- matrix(x1, 3, 2, byrow = TRUE)
 rownames(m1) <- c("90%", "95%", "99%")
 colnames(m1) <- c("lewy koniec przedziału", "prawy koniec przedziału")
 
@@ -249,7 +260,7 @@ x2 <- c(s[3, 1] + qnorm(c(.05, .95)) * s[3, 2],
         s[3, 1] + qnorm(c(.025, .975)) * s[3, 2],
         s[3, 1] + qnorm(c(.005, .995)) * s[3, 2])
 
-m2 <- matrix(x2, 3, 2)
+m2 <- matrix(x2, 3, 2, byrow = TRUE)
 rownames(m2) <- c("90%", "95%", "99%")
 colnames(m2) <- c("lewy koniec przedziału", "prawy koniec przedziału")
 
@@ -262,7 +273,7 @@ kable(m1, caption = "Przedziały ufności dla współczynnika zmiennej horsepowe
 kable(m2, caption = "Przedziały ufności dla współczynnika zmiennej weight")
 ```  
 
-###Przedziały ufności metodą bootstrapową  
+###Przedziały ufności dla współczynników metodą bootstrapową  
 
 ```{r include=FALSE}
 par_horsepower <- rep(NA, 10 ^ 2)
@@ -284,7 +295,7 @@ a1 <- c(quantile(par_horsepower, c(0.05, 0.95)),
         quantile(par_horsepower, c(0.025, 0.975)),
         quantile(par_horsepower, c(0.005, 0.995)))
 
-m3 <- matrix(a1, 3, 2)
+m3 <- matrix(a1, 3, 2, byrow = TRUE)
 rownames(m3) <- c("90%", "95%", "99%")
 colnames(m3) <- c("lewy koniec przedziału", "prawy koniec przedziału")
 ###############################
@@ -292,7 +303,7 @@ a2 <- c(quantile(par_weight, c(0.05, 0.95)),
         quantile(par_weight, c(0.025, 0.975)),
         quantile(par_weight, c(0.005, 0.995)))
 
-m4 <- matrix(a2, 3, 2)
+m4 <- matrix(a2, 3, 2, byrow = TRUE)
 rownames(m4) <- c("90%", "95%", "99%")
 colnames(m4) <- c("lewy koniec przedziału", "prawy koniec przedziału")
 ```
@@ -303,7 +314,9 @@ kable(m3, caption = "Przedziały ufności dla współczynnika zmiennej horsepowe
   
 ```{r echo=FALSE}
 kable(m4, caption = "Przedziały ufności dla współczynnika zmiennej weight")
-```
+```  
+  
+Możliwe jest zaobserowwanie lekkich różnic pomiędzy przedziałąmi ufności wyznaczonymi metodą bootstrapową. Należy jednak pamiętać, że reszty w modelu klasycznym nie miały rozkładu normalnego przez co przedziały wyznaczone za pomocą metody klasycznej mogą być zakłamane.
 
 ```{r include=FALSE}
 hp <- tibble(bootstrap = par_horsepower,
@@ -320,13 +333,14 @@ we <- tibble(bootstrap = par_weight,
                 s[3,2]) %>%
   gather(metoda, parameter)
 ```
-```{r fig.align='center'}
+```{r echo=FALSE, fig.align='center'}
 hp %>%
   ggplot(aes(x = parameter, col = metoda)) + 
-  geom_density()
+  geom_density() + ggtitle("Horsepower")
 
 we %>%
   ggplot(aes(x = parameter, col = metoda)) + 
-  geom_density()
-```
-
+  geom_density() + ggtitle("Weight")
+```  
+  
+Metody bootsrapowe mają szersze przedziały ufności, przez co są także dokłądniejsze. Jeszcze raz jednak trzeba przypomnieć, że w przypadku metody klasycznej, reszty nie miały rozkładu normalnego przez co wyniki mogą być dla tej metdoy niedokładne.
