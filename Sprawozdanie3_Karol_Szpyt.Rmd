@@ -1,12 +1,13 @@
 ---
 title: "Sprawozdanie 3"
-author: "Karol Szpyt"
+author: "Karol Szpyt, Przemysław Wojtarowicz"
 date: "23 maja 2018"
 output: html_document
 ---
 
 #Wstęp  
-Sprawozdanie ma za zadanie ukazać zależność spalania samochodów w zależności od innych czynników. W tym celu przedstawione zostaną statystyki opisowe oraz zbudowany zostanie model liniowy, na podstawie których wyciągane będą wnioski.  
+Sprawozdanie ma za zadanie ukazać zależność spalania samochodów w zależności od innych czynników oraz różnice między klasycznymi metodamy ekonometrycznymi oraz metodamy bootstrapowymi. W tym celu przedstawione zostaną statystyki opisowe oraz zbudowany zostanie model liniowy, na podstawie których wyciągane będą wnioski. 
+
 #Użyte bibioteki
 ```{r message=FALSE, warning=FALSE}
 library(ggplot2)
