@@ -1,7 +1,7 @@
 library(units)
 library(udunits2)
 dane3 <- read.csv("cars.csv")
-
+dane2 <- dane3
 
 dane3$mpg <- set_units(dane3$mpg, mile/gallon)
 #dane3$mpg <- set_units(dane3$mpg, gallon/mile)
@@ -12,13 +12,19 @@ dane3$mpg <- format(round(dane3$mpg, 2))
 
 dane3$displacement <- set_units(dane3$displacement, inch^3)
 units(dane3$displacement) <- with(ud_units, l)
-
+#################################################### tu sobie sprawdź
 dane3$weight <- set_units(dane3$weight, pound)
 units(dane3$weight) <- with(ud_units, kg)
+dane2$weight <- dane2$weight * 0.45
+
+head(dane2)
+head(dane3)
+####################################################
 
 dane3$acceleration <- set_units(dane3$acceleration, s)
 
 dane3$mpg <- as.numeric(dane3$mpg)
+colnames(dane3)[1] <- "l/100km"
 
 write.csv(dane3, file = "dane mpg.csv")
 
