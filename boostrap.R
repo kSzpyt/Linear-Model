@@ -10,6 +10,7 @@ boot_coef <- function(dane)
 #############################################
 bootstrap <- function(dane, alpha = 0.05, n = 10^4)
 {
+  #alpha <- 0.05
   coefs <- sapply(rep(1, n), function(x) boot_coef(dane))
   conf_inter <- apply(coefs, 1, function(x) quantile(x, c(alpha/2, 1-alpha/2)) )
   
@@ -28,11 +29,15 @@ bootstrap <- function(dane, alpha = 0.05, n = 10^4)
     }
   }
   index <- 0
-  index <- which(pvec[, -1] > alpha)
+  pvec <- as.numeric(pvec[, -1])
+  index <- which(pvec > alpha)
+  
+  #index <- which(pvec[index == max(pvec)])
   if(length(index) != 0)
   {
+      index <- which(pvec == max(pvec, na.rm = TRUE))
       dane <- dane[, -(index + 1)]
-      bootstrap(dane)
+      bootstrap(dane, alpha, n)
   }
   else
   {
@@ -40,13 +45,17 @@ bootstrap <- function(dane, alpha = 0.05, n = 10^4)
   }
 }
 #############################################
-xxx <- bootstrap(dat, 0.3, 10^3)
+xxx <- bootstrap(dat, 0.05, 10^5)
 head(xxx)
 dat <- read.csv("dane mpg.csv")
 dat <- dat[, -c(1, 8, 9, 10)]
-
+head(dat)
 
 bootstrap(dat)
 
 
 
+a <- c(4, 3, 2, 1)
+which(a == max(a))
+a[max(a)]
+      
