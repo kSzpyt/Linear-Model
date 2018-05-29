@@ -245,7 +245,7 @@ model$coefficients
 ```  
 $$Y = -0.5551 + 0.0319X1 + 0.0062X2$$
   
-Hipoteza potwierdziła się, zwiększająca się liczba koni mechanicznych zwiększa spalanie w przybliżeniu o 0.03 $\frac{l}{100km}$, a wzrost wagi (kg) implikuje wzrost spalanie o około 0.006 $\frac{l}{100km}$
+Hipoteza potwierdziła się. Korzystając z zasady *ceteris paribus* zwiększająca się liczba koni mechanicznych zwiększa spalanie w przybliżeniu o 0.03 $\frac{l}{100km}$, a wzrost wagi (kg) implikuje wzrost spalanie o około 0.006 $\frac{l}{100km}$
 
 ###Przedziały ufności dla współczynników metodą klasyczną
 ```{r include=FALSE}
